@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F2F2F2" id="theme-color">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="One Step">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" href="icons/icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preload" href="fonts/Outfit-800.woff2" as="font" type="font/woff2" crossorigin>
+  <title>One Step</title>
+  <script>/* set theme before paint so there's no flash */
+    try { const st = JSON.parse(localStorage.getItem('nays-health.v1')) || {}, t = st.theme, x = st.settings || {}; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; if (x.accent) document.documentElement.dataset.accent = x.accent; if (x.text) document.documentElement.dataset.text = x.text; } catch (_) {}
+  </script>
+  <link rel="stylesheet" href="styles.css?v=25">
+</head>
+<body>
+  <div class="app">
+
+    <header class="top">
+      <div>
+        <div class="eyebrow brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 22v-6h6v-6h6V4h8v18z"/></svg>One Step</div>
+        <h1 id="hello">Nay's Health</h1>
+      </div>
+      <button class="round" id="theme-btn" aria-label="Switch light or dark"></button>
+    </header>
+
+    <!--
+      Modular grid: 4 columns on phone, 8 on wide screens.
+      .c4 = full row · .c2 = half · .d-half = half on wide screens · .d-qtr = quarter on wide screens
+    -->
+
+    <!-- ═════════ TODAY ═════════ -->
+    <main class="view" data-view="today">
+      <nav class="week" id="week" aria-label="Pick a day"></nav>
+      <div class="grid">
+        <section class="tile hero c4 d-half" id="hero"></section>
+
+        <section class="tile c4 d-half">
+          <div class="tile-head"><h2>Goals</h2><button class="link" data-go="me" data-to="goals">Edit</button></div>
+          <ul class="list steps" id="steps"></ul>
+        </section>
+
+        <button class="tile stat c2 d-qtr" data-open="meal" id="st-food"></button>
+        <button class="tile stat c2 d-qtr" data-open="meal" id="st-protein"></button>
+        <button class="tile stat c2 d-qtr" data-open="drink" id="st-drink"></button>
+        <button class="tile stat c2 d-qtr" data-open="move" id="st-move"></button>
+
+        <section class="tile c4" data-fold="log">
+          <div class="tile-head"><h2>Your log</h2><span class="caption">Tap to edit</span></div>
+          <ul class="list log" id="log"></ul>
+        </section>
+      </div>
+    </main>
+
+    <!-- ═════════ TRENDS ═════════ -->
+    <main class="view hidden" data-view="patterns">
+      <div class="grid">
+        <div class="seg c4">
+          <input type="radio" name="range" id="rg14" value="14"><label for="rg14">2 wks</label>
+          <input type="radio" name="range" id="rg30" value="30" checked><label for="rg30">Month</label>
+          <input type="radio" name="range" id="rg90" value="90"><label for="rg90">3 mo</label>
+        </div>
+
+        <section class="tile c4 d-half">
+          <div class="tile-head"><h2>Days logged</h2><span class="caption">Goal: 6 of 7</span></div>
+          <div class="rings" id="weeks"></div>
+        </section>
+
+        <section class="tile tryit c4 d-half" id="tryit" data-fold="try">
+          <div class="tile-head"><h2 id="try-title">Try this</h2><span class="caption" id="try-when">Last 3 days</span></div>
+          <div class="state" id="try-state"></div>
+          <ul class="tips" id="try-list"></ul>
+          <p class="foot hidden" id="try-foot">Sharp pain, or pain that won’t go away? See a doctor.</p>
+        </section>
+
+        <section class="tile c4 d-half" data-fold="ask">
+          <div class="tile-head"><h2>Ask a question</h2><span class="caption">From your logs</span></div>
+          <div id="ask-top"></div>
+          <div class="stack" style="margin-top:var(--s2)">
+            <label class="field">If I…<select id="ask-cause"></select></label>
+            <label class="field">…what happens to my<select id="ask-out"></select></label>
+            <div class="seg">
+              <input type="radio" name="asklag" id="al0" value="0" checked><label for="al0">Same day</label>
+              <input type="radio" name="asklag" id="al1" value="1"><label for="al1">Next day</label>
+            </div>
+          </div>
+          <div id="ask-result"></div>
+          <p class="foot">These happen together. That doesn't prove one causes the other.</p>
+        </section>
+
+        <section class="tile c4 d-half" data-fold="chart">
+          <div class="tile-head"><h2>Each day</h2></div>
+          <select id="chart-metric"></select>
+          <svg id="chart" viewBox="0 0 300 160" preserveAspectRatio="none"></svg>
+          <p class="foot" id="chart-note"></p>
+        </section>
+
+        <section class="tile c4" data-fold="freq">
+          <div class="tile-head"><h2>How often</h2></div>
+          <ul class="list freq" id="freq"></ul>
+        </section>
+      </div>
+    </main>
+
+    <!-- ═════════ FOOD PLAN ═════════ -->
+    <main class="view hidden" data-view="plan">
+      <div class="grid">
+        <section class="tile hero-tile fuel c4 d-half" id="fuel"></section>
+        <section class="tile c4 d-half" id="track" data-fold="track">
+          <div class="tile-head"><h2>How you're doing</h2></div>
+          <div class="seg">
+            <input type="radio" name="trange" id="tr7" value="7" checked><label for="tr7">7 days</label>
+            <input type="radio" name="trange" id="tr30" value="30"><label for="tr30">30 days</label>
+          </div>
+          <svg id="radar" viewBox="0 0 300 250" role="img" aria-label="How close you are to each food goal"></svg>
+          <p class="trk-line" id="track-sum"></p>
+          <ul class="list" id="track-list"></ul>
+        </section>
+        <section class="tile c4 d-half">
+          <div class="tile-head"><h2>Each meal</h2><span class="caption">Use your hand</span></div>
+          <div class="modules" id="hands"></div>
+        </section>
+        <section class="tile c4 d-half" data-fold="daily">
+          <div class="tile-head"><h2>Every day</h2></div>
+          <div class="modules" id="duo"></div>
+        </section>
+        <section class="tile c4 d-half" data-fold="vitamins">
+          <div class="tile-head"><h2>Vitamins</h2><span class="caption">Optional</span></div>
+          <p class="caption">Eat lots of colors. You'll get most of these.</p>
+          <table class="micros" id="micros"></table>
+        </section>
+      </div>
+    </main>
+
+    <!-- ═════════ ME ═════════ -->
+    <main class="view hidden" data-view="me">
+      <div class="grid">
+        <section class="tile c4 d-half" id="you">
+          <div class="tile-head"><h2>You</h2><button class="link" id="you-edit" data-you="toggle">Edit</button></div>
+          <div class="kv" id="you-sum"></div>
+          <div id="you-form" class="hidden">
+            <div class="stack">
+              <label class="field">Name<input type="text" id="name" maxlength="40" autocomplete="off"></label>
+            </div>
+            <h3>About you</h3>
+            <p class="caption" style="margin-bottom:var(--s3)">Used to work out your food plan.</p>
+            <form id="f-body" class="stack" autocomplete="off"></form>
+            <button class="primary" data-you="done">Done</button>
+          </div>
+        </section>
+
+        <section class="tile c4 d-half" id="weight" data-fold="weight">
+          <div class="tile-head"><h2>Weight</h2><span class="caption" id="wt-pace"></span></div>
+          <div class="wt-top" id="wt-top"></div>
+          <div class="wt-goal" id="wt-goal"></div>
+          <div class="seg mini" style="margin-top:var(--s4)">
+            <input type="radio" name="wtrange" id="wr30" value="30"><label for="wr30">1 mo</label>
+            <input type="radio" name="wtrange" id="wr90" value="90" checked><label for="wr90">3 mo</label>
+            <input type="radio" name="wtrange" id="wrall" value="9999"><label for="wrall">All</label>
+          </div>
+          <svg id="wt-chart" viewBox="0 0 300 170" role="img" aria-label="Weight trend over time"></svg>
+          <p class="caption wt-legend" id="wt-legend"></p>
+          <div class="wt-add">
+            <input type="number" inputmode="decimal" step="0.1" id="wt-input" aria-label="Today's weight">
+            <button class="go-btn" id="wt-save">Save</button>
+          </div>
+          <label class="field" style="margin-top:var(--s3)"><span id="wt-goal-label">Goal weight</span><input type="number" inputmode="decimal" step="0.1" id="wt-goal-input" placeholder="Optional"></label>
+          <ul class="list log" id="wt-list" style="margin-top:var(--s3)"></ul>
+          <p class="foot">Weight goes up and down each day. Watch the trend, not one number.</p>
+        </section>
+
+        <section class="tile c4 d-half" id="goals">
+          <div class="tile-head"><h2>Your goals</h2><button class="link" id="goals-edit" data-goals="toggle">Edit</button></div>
+          <div id="goals-sum"></div>
+          <div id="goals-form" class="hidden">
+            <p class="caption">Pick a few. Fewer is easier.</p>
+            <ul class="list edit-steps" id="edit-steps"></ul>
+            <button class="secondary" id="add-step">+ Add a goal</button>
+            <button class="primary" data-goals="done">Done</button>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- ═════════ WORKOUT ═════════ -->
+    <main class="view hidden" data-view="workout">
+      <div class="grid">
+        <section class="tile c4 d-half wk-start">
+          <div class="tile-head"><h2>Workout</h2><span class="caption" id="wk-date"></span></div>
+          <p class="caption">Add what you did. We work out the time, calories, and muscles.</p>
+          <button class="primary" data-wk="new">+ Start a workout</button>
+          <button class="secondary" data-wk="repeat" id="wk-repeat" style="margin-top:var(--s3)">Repeat last</button>
+        </section>
+
+        <section class="tile c4 d-half" data-fold="wkplans">
+          <div class="tile-head"><h2>Plans</h2><span class="caption">Tap to start</span></div>
+          <div class="plans" id="wk-plans"></div>
+        </section>
+
+        <section class="tile c4 d-half" data-fold="wkweek">
+          <div class="tile-head"><h2>This week</h2><span class="caption">Last 7 days</span></div>
+          <div class="wk-stats" id="wk-stats"></div>
+          <div class="muscle-grid" id="wk-muscles"></div>
+          <p class="foot" id="wk-tip"></p>
+        </section>
+
+        <section class="tile c4">
+          <div class="tile-head"><h2>History</h2><span class="caption">Tap to edit</span></div>
+          <ul class="list" id="wk-history"></ul>
+        </section>
+      </div>
+    </main>
+
+    <!-- ═════════ SETTINGS ═════════ -->
+    <main class="view hidden" data-view="settings">
+      <div class="grid">
+        <section class="tile c4 d-half">
+          <div class="tile-head"><h2>Look</h2></div>
+          <div class="stack">
+            <label class="field">Mode</label>
+            <div class="seg" id="set-theme">
+              <input type="radio" name="theme" id="th-a" value="auto"><label for="th-a">Auto</label>
+              <input type="radio" name="theme" id="th-l" value="light"><label for="th-l">Light</label>
+              <input type="radio" name="theme" id="th-d" value="dark"><label for="th-d">Dark</label>
+            </div>
+            <label class="field">Color</label>
+            <div class="swatches" id="set-accent"></div>
+            <label class="field">Text size</label>
+            <div class="seg" id="set-text">
+              <input type="radio" name="textsize" id="tx-n" value="normal"><label for="tx-n">Normal</label>
+              <input type="radio" name="textsize" id="tx-l" value="large"><label for="tx-l">Large</label>
+            </div>
+          </div>
+        </section>
+
+        <section class="tile c4 d-half">
+          <div class="tile-head"><h2>Date &amp; time</h2></div>
+          <div class="stack">
+            <label class="field">Time</label>
+            <div class="seg" id="set-time">
+              <input type="radio" name="timefmt" id="tf-12" value="12"><label for="tf-12">1:30 PM</label>
+              <input type="radio" name="timefmt" id="tf-24" value="24"><label for="tf-24">13:30</label>
+            </div>
+            <label class="field">Date</label>
+            <div class="seg" id="set-date">
+              <input type="radio" name="datefmt" id="df-us" value="us"><label for="df-us">Nov 11</label>
+              <input type="radio" name="datefmt" id="df-intl" value="intl"><label for="df-intl">11 Nov</label>
+              <input type="radio" name="datefmt" id="df-num" value="num"><label for="df-num">11/11</label>
+            </div>
+            <label class="field">New day starts at</label>
+            <div class="seg" id="set-daystart">
+              <input type="radio" name="daystart" id="ds-0" value="0"><label for="ds-0">Midnight</label>
+              <input type="radio" name="daystart" id="ds-3" value="3"><label for="ds-3">3 AM</label>
+              <input type="radio" name="daystart" id="ds-5" value="5"><label for="ds-5">5 AM</label>
+            </div>
+            <p class="caption">Up late? A 1 AM snack can count for the day before.</p>
+          </div>
+        </section>
+
+        <section class="tile c4 d-half">
+          <div class="tile-head"><h2>App</h2></div>
+          <div class="stack">
+            <label class="field">Units</label>
+            <div class="seg" id="units">
+              <input type="radio" name="units" id="un-i" value="imperial"><label for="un-i">lb · oz</label>
+              <input type="radio" name="units" id="un-m" value="metric"><label for="un-m">kg · ml</label>
+            </div>
+            <label class="field">Open the app on</label>
+            <div class="seg" id="set-start">
+              <input type="radio" name="startview" id="sv-t" value="today"><label for="sv-t">Today</label>
+              <input type="radio" name="startview" id="sv-w" value="workout"><label for="sv-w">Workout</label>
+              <input type="radio" name="startview" id="sv-m" value="me"><label for="sv-m">Me</label>
+              <input type="radio" name="startview" id="sv-p" value="patterns"><label for="sv-p">Trends</label>
+              <input type="radio" name="startview" id="sv-f" value="plan"><label for="sv-f">Food</label>
+            </div>
+            <label class="field">Sections</label>
+            <div class="pair">
+              <button class="secondary" id="folds-open">Open all</button>
+              <button class="secondary" id="folds-reset">Reset</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="tile c4 d-half" data-fold="iphone" id="iphone">
+          <div class="tile-head"><h2>iPhone Health</h2></div>
+          <p class="caption">Send steps, sleep, and weight from the Health app.</p>
+          <div class="stack" style="margin-top:var(--s4)">
+            <button class="secondary" id="paste-btn">Paste from Shortcut</button>
+            <textarea id="paste-box" placeholder="Or paste here, like:&#10;log=steps&amp;count=8200"></textarea>
+            <button class="secondary" id="paste-add">Add</button>
+          </div>
+          <h3>Quick links</h3>
+          <ul class="list links" id="links"></ul>
+          <details class="more">
+            <summary>How to make the Shortcut</summary>
+            <div>
+              <ol class="how">
+                <li>Open <b>Shortcuts</b>. Tap <b>+</b>.</li>
+                <li>Add <code>Find Health Samples</code>. Pick <b>Steps</b>, <b>today</b>.</li>
+                <li>Add <code>Calculate Statistics</code>. Pick <b>Sum</b>.</li>
+                <li>Add <code>Text</code>: <code>log=steps&amp;count=</code> + the Sum.</li>
+                <li>Add <code>Copy to Clipboard</code>.</li>
+                <li>Run it. Then tap <b>Paste from Shortcut</b> here.</li>
+              </ol>
+              <p class="caption">Sleep: <code>log=sleep&amp;hours=</code> · Weight: <code>log=weight&amp;lb=</code></p>
+            </div>
+          </details>
+        </section>
+
+        <section class="tile c4 d-half" data-fold="data" id="data">
+          <div class="tile-head"><h2>Your data</h2><span class="caption">On this phone only</span></div>
+          <p class="backup" id="backup-note"></p>
+          <div class="stack">
+            <button class="secondary" id="export-csv">Export spreadsheet</button>
+            <button class="secondary" id="export-json">Save backup</button>
+            <label class="secondary">Open a file<input type="file" id="import-file" accept=".json,.csv,text/csv,application/json"></label>
+            <button class="secondary" id="sample">Try sample data</button>
+            <button class="danger" id="clear">Erase all</button>
+          </div>
+        </section>
+
+        <section class="tile c4" data-fold="why">
+          <div class="tile-head"><h2>About</h2><span class="caption" id="about-ver"></span></div>
+          <ul class="why">
+            <li>Logging most days beats logging every detail.</li>
+            <li>Counting treats works about as well as counting calories.</li>
+            <li>Missed a day? No problem. Just start again.</li>
+          </ul>
+          <p class="foot" id="about-stats"></p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Pop-out toolbar: only the + peeks in from the right until tapped -->
+  <div class="rail-scrim hidden" id="rail-scrim" data-rail="close"></div>
+  <nav class="rail" id="rail" aria-label="Main">
+    <div class="rail-items" id="rail-items">
+      <button data-go="workout"><svg viewBox="0 0 24 24"><path d="M4 7h3v10H4zM1 9.5h2.5v5H1zM17 7h3v10h-3zM20.5 9.5H23v5h-2.5zM7.5 10.5h9v3h-9z"/></svg>Workout</button>
+      <button class="log-btn" data-open="add" aria-label="Log something"><svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg>Log</button>
+      <button data-go="today" class="on"><svg viewBox="0 0 24 24"><path d="M12 2.5 2 10.6V21a1 1 0 0 0 1 1h6v-7h6v7h6a1 1 0 0 0 1-1V10.6z"/></svg>Today</button>
+      <button data-go="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="5"/><path d="M2.5 22c.6-5 4.6-8 9.5-8s8.9 3 9.5 8z"/></svg>Me</button>
+      <button data-go="patterns"><svg viewBox="0 0 24 24"><rect x="2.5" y="12" width="5.5" height="10" rx="1.8"/><rect x="9.25" y="3" width="5.5" height="19" rx="1.8"/><rect x="16" y="8" width="5.5" height="14" rx="1.8"/></svg>Trends</button>
+      <button data-go="plan"><svg viewBox="0 0 24 24"><path d="M12 7.2c-1.6-1.3-3.6-1.7-5.3-1.1C3.9 7.1 2.8 10 2.8 12.9 2.8 17.2 5.8 22 8.5 22c1.3 0 2-.6 3.5-.6s2.2.6 3.5.6c2.7 0 5.7-4.8 5.7-9.1 0-2.9-1.1-5.8-3.9-6.8-1.7-.6-3.7-.2-5.3 1.1z"/><path d="M12.3 6.3C12.4 3.9 14 2.2 16.6 2c.1 2.5-1.6 4.2-4.3 4.3z"/></svg>Food</button>
+      <button data-go="settings"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M10.2 1.5h3.6l.6 2.8c.7.3 1.3.6 1.9 1.1l2.7-.9 1.8 3.1-2.1 1.9a7 7 0 0 1 0 2.2l2.1 1.9-1.8 3.1-2.7-.9c-.6.5-1.2.8-1.9 1.1l-.6 2.8h-3.6l-.6-2.8c-.7-.3-1.3-.6-1.9-1.1l-2.7.9-1.8-3.1 2.1-1.9a7 7 0 0 1 0-2.2L3.2 7.6 5 4.5l2.7.9c.6-.5 1.2-.8 1.9-1.1zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z"/></svg>Settings</button>
+    </div>
+    <button class="rail-toggle" id="rail-toggle" data-rail="toggle" aria-label="Open menu" aria-expanded="false" aria-controls="rail-items">
+      <svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg>
+    </button>
+  </nav>
+
+  <!-- Bottom sheet -->
+  <div class="sheet-wrap hidden" id="sheet">
+    <div class="backdrop" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="grab"></div>
+      <div id="sheet-body"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"><span></span><button id="toast-undo">Undo</button></div>
+
+  <script src="howto.js?v=25"></script>
+  <script src="workout.js?v=25"></script>
+  <script src="app.js?v=25"></script>
+</body>
+</html>
